@@ -1,0 +1,68 @@
+services:
+  pgdatabase:
+    image: postgres:16
+    container_name: pgdatabase
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ny_taxi
+    volumes:
+      - ny_taxi_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ny_taxi_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "8085:80"
+    depends_on:
+      - pgdatabase
+    networks:
+      - ny_taxi_network
+
+  taxi_ingest:
+    image: ingest:001
+    container_name: taxi_ingest
+    depends_on:
+      - pgdatabase
+    command: >
+      --pg-user=root
+      --pg-pass=root
+      --pg-host=pgdatabase
+      --pg-port=5432
+      --pg-db=ny_taxi
+      --table-name=green_taxi_data
+    networks:
+      - ny_taxi_network
+
+  
+  zone_data:
+    depends_on:
+      - pgdatabase
+    image: zones:001
+    container_name: zones
+    command: >
+      --pg-user=root
+      --pg-pass=root
+      --pg-host=pgdatabase
+      --pg-port=5432
+      --pg-db=ny_taxi
+      --target-table=zones
+    networks:
+      - ny_taxi_network
+
+volumes:
+  ny_taxi_postgres_data:
+  pgadmin_data:
+
+networks:
+  ny_taxi_network:
+    driver: bridge
